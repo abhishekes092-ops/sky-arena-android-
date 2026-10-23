@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sky Arena 60FPS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;overflow:hidden;touch-action:none}
+canvas{display:block;width:100vw;height:100vh}
+#ui{position:fixed;top:12px;left:12px;color:#fff;font:bold 14px system-ui}
+#hp{width:200px;height:14px;background:#222;border-radius:7px;overflow:hidden;margin-top:6px}
+#hpf{height:100%;width:100%;background:#22c55e}
+#joy{position:fixed;bottom:25px;left:25px;width:120px;height:120px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:50%}
+#stick{position:absolute;left:30px;top:30px;width:60px;height:60px;background:#fff;border-radius:50%}
+#atk{position:fixed;bottom:35px;right:35px;width:85px;height:85px;background:#ef4444;border:3px solid #fff;border-radius:50%;color:#fff;font:900 18px system-ui}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">SKY ARENA 60 FPS<div id="hp"><div id="hpf"></div></div></div>
+<div id="joy"><div id="stick"></div></div>
+<button id="atk">ATK</button>
+<script>
+const C=document.getElementById('c'),X=C.getContext('2d');
+let W,H;function R(){W=C.width=innerWidth;H=C.height=innerHeight}R();onresize=R;
+let p={x:W/2,y:H/2,r:18,hp:100,s:5},es=[],ps=[],joy={x:0,y:0},last=0;
+for(let i=0;i<6;i++)es.push({x:Math.random()*W,y:Math.random()*H,r:15,hp:40});
+
+function jmove(e){
+ const r=document.getElementById('joy').getBoundingClientRect();
+ const cx=r.left+60,cy=r.top+60;
+ const dx=(e.touches?e.touches[0].clientX:e.clientX)-cx;
+ const dy=(e.touches?e.touches[0].clientY:e.clientY)-cy;
+ const d=Math.min(40,Math.hypot(dx,dy)),a=Math.atan2(dy,dx);
+ joy.x=Math.cos(a)*d/40;joy.y=Math.sin(a)*d/40;
+ document.getElementById('stick').style.transform=`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`;
+}
+const J=document.getElementById('joy');
+J.addEventListener('touchstart',jmove,{passive:false});
+J.addEventListener('touchmove',e=>{e.preventDefault();jmove(e)},{passive:false});
+J.addEventListener('touchend',()=>{joy.x=joy.y=0;document.getElementById('stick').style.transform='translate(0,0)'});
+
+let keys={};onkeydown=e=>keys[e.key.toLowerCase()]=true;onkeyup=e=>keys[e.key.toLowerCase()]=false;
+function atk(){
+ es.forEach(en=>{if(Math.hypot(en.x-p.x,en.y-p.y)<90){en.hp-=30;for(let i=0;i<8;i++)ps.push({x:en.x,y:en.y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:15})}});
+}
+document.getElementById('atk').onclick=atk;
+document.getElementById('atk').ontouchstart=e=>{e.preventDefault();atk()};
+
+function loop(t){
+ requestAnimationFrame(loop);
+ let dt=Math.min(32,t-last)/16.6;last=t;if(!dt)dt=1;
+ let mx=joy.x,my=joy.y;
+ if(keys.w||keys.arrowup)my=-1;if(keys.s||keys.arrowdown)my=1;
+ if(keys.a||keys.arrowleft)mx=-1;if(keys.d||keys.arrowright)mx=1;
+ p.x+=mx*p.s*dt;p.y+=my*p.s*dt;
+ p.x=Math.max(p.r,Math.min(W-p.r,p.x));p.y=Math.max(p.r,Math.min(H-p.r,p.y));
+ es.forEach(en=>{
+  if(en.hp<=0)return;
+  let a=Math.atan2(p.y-en.y,p.x-en.x);
+  en.x+=Math.cos(a)*1.3*dt;en.y+=Math.sin(a)*1.3*dt;
+  if(Math.hypot(en.x-p.x,en.y-p.y)<p.r+en.r){p.hp-=0.25*dt;document.getElementById('hpf').style.width=p.hp+'%';if(p.hp<=0)p.hp=100}
+ });
+ es=es.filter(e=>e.hp>0);if(es.length<5)es.push({x:Math.random()*W,y:Math.random()*H,r:15,hp:40});
+ X.fillStyle='#101a2e';X.fillRect(0,0,W,H);
+ X.strokeStyle='rgba(255,255,255,.04)';for(let i=0;i<W;i+=50){X.beginPath();X.moveTo(i,0);X.lineTo(i,H);X.stroke()}for(let i=0;i<H;i+=50){X.beginPath();X.moveTo(0,i);X.lineTo(W,i);X.stroke()}
+ es.forEach(en=>{X.fillStyle='#ef4444';X.beginPath();X.arc(en.x,en.y,en.r,0,7);X.fill()});
+ X.fillStyle='#38bdf8';X.shadowColor='#38bdf8';X.shadowBlur=20;X.beginPath();X.arc(p.x,p.y,p.r,0,7);X.fill();X.shadowBlur=0;
+ ps.forEach((q,i)=>{q.x+=q.vx;q.y+=q.vy;q.l--;X.fillStyle=`rgba(255,210,0,${q.l/15})`;X.fillRect(q.x,q.y,4,4);if(q.l<=0)ps.splice(i,1)});
+}
+loop(0);
+</script>
+</body>
+</html>
